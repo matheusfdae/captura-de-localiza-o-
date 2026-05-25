@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="theme-color" content="#0F6E56"/>
 <title>Pesquisa de Localização de Postos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f3;color:#1a1a1a;min-height:100vh;}
@@ -13,7 +14,7 @@ header svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2;flex-shri
 header h1{font-size:17px;font-weight:600;flex:1;}
 header .clock{font-size:13px;opacity:0.9;font-weight:500;}
 .container{max-width:480px;margin:2rem auto;padding:0 1rem 3rem;}
-.card{background:#fff;border-radius:16px;padding:1.5rem;box-shadow:0 2px 12px rgba(0,0,0,0.08);}
+.card{background:#fff;border-radius:16px;padding:1.5rem;box-shadow:0 2px 12px rgba(0,0,0,0.08);margin-bottom:1rem;}
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
 .field label{font-size:14px;font-weight:600;color:#374151;}
 .field input{padding:14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:16px;background:#fff;color:#1a1a1a;outline:none;transition:border-color .2s,box-shadow .2s;}
@@ -41,6 +42,27 @@ header .clock{font-size:13px;opacity:0.9;font-weight:500;}
 .alert.error{background:#FCEBEB;color:#A32D2D;border:1px solid #F09595;}
 .info-box{background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 14px;font-size:12px;color:#0369a1;display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;}
 .info-box svg{width:15px;height:15px;stroke:#0369a1;fill:none;stroke-width:2;flex-shrink:0;margin-top:1px;}
+.admin-link{text-align:center;margin-top:1rem;}
+.admin-link button{background:none;border:none;font-size:12px;color:#9ca3af;cursor:pointer;text-decoration:underline;}
+/* ADMIN */
+.page{display:none;}
+.page.active{display:block;}
+.admin-header{display:flex;align-items:center;gap:10px;margin-bottom:1.5rem;}
+.admin-header h2{font-size:18px;font-weight:600;color:#1a1a1a;flex:1;}
+.btn-logout{font-size:12px;padding:6px 14px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#6b7280;cursor:pointer;}
+.btn-xlsx{width:100%;padding:14px;font-size:15px;font-weight:700;border:none;border-radius:12px;background:#1D6FA8;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(29,111,168,0.3);transition:all .2s;margin-bottom:1rem;}
+.btn-xlsx:active{background:#1558880;}
+.btn-xlsx svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.25rem;}
+.stat{background:#f9fafb;border-radius:10px;padding:14px;text-align:center;}
+.stat .num{font-size:26px;font-weight:700;color:#0F6E56;}
+.stat .lbl{font-size:11px;color:#9ca3af;margin-top:3px;}
+.reg-card{background:#f9fafb;border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid #1D9E75;}
+.reg-nome{font-size:14px;font-weight:700;color:#1a1a1a;}
+.reg-info{font-size:12px;color:#6b7280;margin-top:3px;line-height:1.7;}
+.reg-coords{font-size:11px;font-family:'Courier New',monospace;color:#9ca3af;margin-top:3px;}
+.empty{text-align:center;padding:2rem;color:#9ca3af;font-size:13px;}
+.loading-data{text-align:center;padding:2rem;color:#6b7280;font-size:13px;}
 footer{text-align:center;padding:1.5rem;font-size:12px;color:#9ca3af;}
 </style>
 </head>
@@ -48,66 +70,177 @@ footer{text-align:center;padding:1.5rem;font-size:12px;color:#9ca3af;}
 
 <header>
   <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-  <h1>Pesquisa de Localização de Postos</h1>
+  <h1 id="header-title">Pesquisa de Localização de Postos</h1>
   <span class="clock" id="relogio"></span>
 </header>
 
 <div class="container">
-
   <div id="alert" class="alert"></div>
 
-  <div class="card">
-
-    <div class="info-box">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <span>Preencha os dados do posto e capture a localização. Os registros são salvos automaticamente de forma segura.</span>
+  <!-- PÁGINA FORMULÁRIO -->
+  <div id="page-form" class="page active">
+    <div class="card">
+      <div class="info-box">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>Preencha os dados do posto e capture a localização. Os registros são salvos automaticamente de forma segura.</span>
+      </div>
+      <div class="field">
+        <label for="nome">Nome do responsável</label>
+        <input type="text" id="nome" placeholder="Digite seu nome" autocomplete="name" oninput="verificar()"/>
+      </div>
+      <div class="field">
+        <label for="posto">Nome do posto</label>
+        <input type="text" id="posto" placeholder="Digite o nome do posto" oninput="verificar()"/>
+      </div>
+      <div class="geo-box">
+        <div class="geo-dot" id="geo-dot"></div>
+        <div class="geo-info">
+          <div class="geo-label" id="geo-label">Localização do posto não capturada</div>
+          <div class="geo-coords" id="geo-coords"></div>
+        </div>
+      </div>
+      <button class="btn-geo" id="btn-geo" onclick="capturarGeo()">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        Capturar localização do posto
+      </button>
+      <button class="btn-submit" id="btn-submit" onclick="registrar()" disabled>
+        <div class="spinner" id="spinner"></div>
+        <svg id="btn-icon" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        <span id="btn-text">Salvar localização do posto</span>
+      </button>
     </div>
-
-    <div class="field">
-      <label for="nome">Nome do responsável</label>
-      <input type="text" id="nome" placeholder="Digite seu nome" autocomplete="name" oninput="verificar()"/>
+    <div class="admin-link">
+      <button onclick="abrirLogin()">Acesso Administrativo</button>
     </div>
+  </div>
 
-    <div class="field">
-      <label for="posto">Nome do posto</label>
-      <input type="text" id="posto" placeholder="Digite o nome do posto" oninput="verificar()"/>
-    </div>
-
-    <div class="geo-box">
-      <div class="geo-dot" id="geo-dot"></div>
-      <div class="geo-info">
-        <div class="geo-label" id="geo-label">Localização do posto não capturada</div>
-        <div class="geo-coords" id="geo-coords"></div>
+  <!-- PÁGINA LOGIN ADMIN -->
+  <div id="page-login" class="page">
+    <div class="card">
+      <div class="admin-header">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <h2>Painel Administrativo</h2>
+      </div>
+      <div class="field">
+        <label for="senha">Senha de acesso</label>
+        <input type="password" id="senha" placeholder="Digite a senha" onkeydown="if(event.key==='Enter') entrar()"/>
+      </div>
+      <button class="btn-submit" style="margin-top:4px;" onclick="entrar()">
+        <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        <span>Entrar</span>
+      </button>
+      <div style="text-align:center;margin-top:1rem;">
+        <button onclick="irParaForm()" style="background:none;border:none;font-size:13px;color:#6b7280;cursor:pointer;">← Voltar ao formulário</button>
       </div>
     </div>
-
-    <button class="btn-geo" id="btn-geo" onclick="capturarGeo()">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-      Capturar localização do posto
-    </button>
-
-    <button class="btn-submit" id="btn-submit" onclick="registrar()" disabled>
-      <div class="spinner" id="spinner"></div>
-      <svg id="btn-icon" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-      <span id="btn-text">Salvar localização do posto</span>
-    </button>
-
   </div>
+
+  <!-- PÁGINA ADMIN -->
+  <div id="page-admin" class="page">
+    <div class="card">
+      <div class="admin-header">
+        <h2>Painel Administrativo</h2>
+        <button class="btn-logout" onclick="sair()">Sair</button>
+      </div>
+      <div class="stat-grid" id="stats">
+        <div class="stat"><div class="num" id="st-total">—</div><div class="lbl">Total de registros</div></div>
+        <div class="stat"><div class="num" id="st-postos">—</div><div class="lbl">Postos cadastrados</div></div>
+      </div>
+      <button class="btn-xlsx" onclick="exportarExcel()">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Baixar Planilha Excel (.xlsx)
+      </button>
+      <div id="lista-admin"><div class="loading-data">Carregando registros...</div></div>
+    </div>
+  </div>
+
 </div>
 
 <footer>Pesquisa de Localização de Postos</footer>
 
 <script>
-const SUPABASE_URL = 'https://nzrxdwbgmvcpoqtowncc.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56cnhkd2JnbXZjcG9xdG93bmNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3Mjg0MDksImV4cCI6MjA5NTMwNDQwOX0.tdxMOjpA9GXI-P2qv12ba5Ta8F9y3bpvvlXADuRN54Y';
-
-let lat=null, lng=null, prec=null;
+const SUPABASE_URL='https://nzrxdwbgmvcpoqtowncc.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56cnhkd2JnbXZjcG9xdG93bmNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3Mjg0MDksImV4cCI6MjA5NTMwNDQwOX0.tdxMOjpA9GXI-P2qv12ba5Ta8F9y3bpvvlXADuRN54Y';
+const SENHA_ADMIN='MatheusA3';
+let lat=null,lng=null,prec=null;
+let todosRegistros=[];
 
 function relogio(){
   const el=document.getElementById('relogio');
   if(el) el.textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 }
 relogio(); setInterval(relogio,1000);
+
+function mostrarPagina(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+}
+
+function irParaForm(){ mostrarPagina('form'); }
+function abrirLogin(){ mostrarPagina('login'); document.getElementById('senha').value=''; }
+
+function entrar(){
+  const s=document.getElementById('senha').value;
+  if(s===SENHA_ADMIN){
+    mostrarPagina('admin');
+    document.getElementById('header-title').textContent='Painel Administrativo';
+    carregarRegistros();
+  } else {
+    mostrarAlerta('error','❌ Senha incorreta!');
+  }
+}
+
+function sair(){
+  mostrarPagina('form');
+  document.getElementById('header-title').textContent='Pesquisa de Localização de Postos';
+}
+
+async function carregarRegistros(){
+  document.getElementById('lista-admin').innerHTML='<div class="loading-data">Carregando registros...</div>';
+  try {
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/registros_ponto?select=*&order=criado_em.desc`,{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}
+    });
+    todosRegistros=await res.json();
+    document.getElementById('st-total').textContent=todosRegistros.length;
+    document.getElementById('st-postos').textContent=new Set(todosRegistros.map(r=>r.posto)).size;
+    if(!todosRegistros.length){
+      document.getElementById('lista-admin').innerHTML='<div class="empty">Nenhum registro encontrado</div>';
+      return;
+    }
+    document.getElementById('lista-admin').innerHTML=todosRegistros.map(r=>`
+      <div class="reg-card">
+        <div class="reg-nome">${r.nome}</div>
+        <div class="reg-info">📍 ${r.posto} &nbsp;·&nbsp; 🕐 ${r.data} às ${r.hora}</div>
+        <div class="reg-coords">Lat: ${r.latitude} · Lng: ${r.longitude} · ±${r.precisao}m</div>
+      </div>`).join('');
+  } catch(e){
+    document.getElementById('lista-admin').innerHTML='<div class="empty">Erro ao carregar registros.</div>';
+  }
+}
+
+function exportarExcel(){
+  if(!todosRegistros.length){ mostrarAlerta('error','Nenhum registro para exportar.'); return; }
+  const dados=todosRegistros.map((r,i)=>({
+    'Nº': i+1,
+    'Nome do Responsável': r.nome,
+    'Nome do Posto': r.posto,
+    'Data': r.data,
+    'Hora': r.hora,
+    'Latitude': r.latitude,
+    'Longitude': r.longitude,
+    'Precisão (m)': r.precisao,
+    'Registrado em': new Date(r.criado_em).toLocaleString('pt-BR')
+  }));
+  const ws=XLSX.utils.json_to_sheet(dados);
+  ws['!cols']=[
+    {wch:5},{wch:25},{wch:25},{wch:14},{wch:12},
+    {wch:14},{wch:14},{wch:12},{wch:22}
+  ];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,'Registros',ws);
+  XLSX.writeFile(wb,'localizacao_postos_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
 
 function capturarGeo(){
   const dot=document.getElementById('geo-dot');
@@ -152,36 +285,25 @@ async function registrar(){
   const agora=new Date();
   const data=agora.toLocaleDateString('pt-BR');
   const hora=agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-
   setLoading(true);
-
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/registros_ponto`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({nome, posto, data, hora, latitude: parseFloat(lat), longitude: parseFloat(lng), precisao: prec})
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/registros_ponto`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Prefer':'return=minimal'},
+      body:JSON.stringify({nome,posto,data,hora,latitude:parseFloat(lat),longitude:parseFloat(lng),precisao:prec})
     });
-
-    if(!res.ok) throw new Error('Erro ao salvar');
-
-    mostrarAlerta('success','✅ Localização do posto salva com sucesso! — '+posto);
+    if(!res.ok) throw new Error();
+    mostrarAlerta('success','✅ Localização do posto salva! — '+posto);
     document.getElementById('nome').value='';
     document.getElementById('posto').value='';
-    lat=null; lng=null; prec=null;
+    lat=null;lng=null;prec=null;
     document.getElementById('geo-label').textContent='Localização do posto não capturada';
     document.getElementById('geo-coords').textContent='';
     document.getElementById('geo-dot').className='geo-dot';
     document.getElementById('btn-submit').disabled=true;
-
   } catch(e){
-    mostrarAlerta('error','❌ Erro ao salvar. Verifique sua conexão e tente novamente.');
+    mostrarAlerta('error','❌ Erro ao salvar. Verifique sua conexão.');
   }
-
   setLoading(false);
 }
 
