@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="theme-color" content="#0F6E56"/>
+<title>Pesquisa de Localização de Postos</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f3;color:#1a1a1a;min-height:100vh;}
+header{background:#0F6E56;color:#fff;padding:1rem 1.25rem;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.15);}
+header svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2;flex-shrink:0;}
+header h1{font-size:17px;font-weight:600;flex:1;}
+header .clock{font-size:13px;opacity:0.9;font-weight:500;}
+.container{max-width:480px;margin:2rem auto;padding:0 1rem 3rem;}
+.card{background:#fff;border-radius:16px;padding:1.5rem;box-shadow:0 2px 12px rgba(0,0,0,0.08);}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.field label{font-size:14px;font-weight:600;color:#374151;}
+.field input{padding:14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:16px;background:#fff;color:#1a1a1a;outline:none;transition:border-color .2s,box-shadow .2s;}
+.field input:focus{border-color:#1D9E75;box-shadow:0 0 0 3px rgba(29,158,117,0.12);}
+.geo-box{background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:10px;padding:13px 14px;display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.geo-dot{width:12px;height:12px;border-radius:50%;background:#d1d5db;flex-shrink:0;transition:background .3s;}
+.geo-dot.ok{background:#1D9E75;}
+.geo-dot.err{background:#E24B4A;}
+.geo-dot.loading{background:#F59E0B;animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.geo-info{flex:1;}
+.geo-label{font-size:13px;color:#6b7280;}
+.geo-coords{font-size:12px;font-family:'Courier New',monospace;color:#0F6E56;font-weight:600;margin-top:3px;}
+.btn-geo{width:100%;padding:13px;font-size:15px;font-weight:600;border:1.5px solid #1D9E75;border-radius:10px;background:#fff;color:#1D9E75;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px;transition:all .2s;}
+.btn-geo:active{background:#E1F5EE;}
+.btn-geo svg{width:18px;height:18px;stroke:#1D9E75;fill:none;stroke-width:2;}
+.btn-submit{width:100%;padding:16px;font-size:16px;font-weight:700;border:none;border-radius:12px;background:#1D9E75;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(29,158,117,0.35);transition:all .2s;}
+.btn-submit:active{background:#0F6E56;transform:scale(0.98);}
+.btn-submit:disabled{background:#e5e7eb;color:#9ca3af;cursor:not-allowed;box-shadow:none;}
+.btn-submit svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;}
+.spinner{display:none;width:20px;height:20px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.alert{display:none;align-items:center;gap:10px;padding:13px 16px;border-radius:10px;font-size:14px;font-weight:500;margin-bottom:1rem;}
+.alert.success{background:#E1F5EE;color:#0F6E56;border:1px solid #5DCAA5;}
+.alert.error{background:#FCEBEB;color:#A32D2D;border:1px solid #F09595;}
+.info-box{background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 14px;font-size:12px;color:#0369a1;display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;}
+.info-box svg{width:15px;height:15px;stroke:#0369a1;fill:none;stroke-width:2;flex-shrink:0;margin-top:1px;}
+footer{text-align:center;padding:1.5rem;font-size:12px;color:#9ca3af;}
+</style>
+</head>
+<body>
+
+<header>
+  <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+  <h1>Pesquisa de Localização de Postos</h1>
+  <span class="clock" id="relogio"></span>
+</header>
+
+<div class="container">
+
+  <div id="alert" class="alert"></div>
+
+  <div class="card">
+
+    <div class="info-box">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span>Preencha os dados do posto e capture a localização. Os registros são salvos automaticamente de forma segura.</span>
+    </div>
+
+    <div class="field">
+      <label for="nome">Nome do responsável</label>
+      <input type="text" id="nome" placeholder="Digite seu nome" autocomplete="name" oninput="verificar()"/>
+    </div>
+
+    <div class="field">
+      <label for="posto">Nome do posto</label>
+      <input type="text" id="posto" placeholder="Digite o nome do posto" oninput="verificar()"/>
+    </div>
+
+    <div class="geo-box">
+      <div class="geo-dot" id="geo-dot"></div>
+      <div class="geo-info">
+        <div class="geo-label" id="geo-label">Localização do posto não capturada</div>
+        <div class="geo-coords" id="geo-coords"></div>
+      </div>
+    </div>
+
+    <button class="btn-geo" id="btn-geo" onclick="capturarGeo()">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      Capturar localização do posto
+    </button>
+
+    <button class="btn-submit" id="btn-submit" onclick="registrar()" disabled>
+      <div class="spinner" id="spinner"></div>
+      <svg id="btn-icon" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+      <span id="btn-text">Salvar localização do posto</span>
+    </button>
+
+  </div>
+</div>
+
+<footer>Pesquisa de Localização de Postos</footer>
+
+<script>
+const SUPABASE_URL = 'https://nzrxdwbgmvcpoqtowncc.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56cnhkd2JnbXZjcG9xdG93bmNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3Mjg0MDksImV4cCI6MjA5NTMwNDQwOX0.tdxMOjpA9GXI-P2qv12ba5Ta8F9y3bpvvlXADuRN54Y';
+
+let lat=null, lng=null, prec=null;
+
+function relogio(){
+  const el=document.getElementById('relogio');
+  if(el) el.textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+relogio(); setInterval(relogio,1000);
+
+function capturarGeo(){
+  const dot=document.getElementById('geo-dot');
+  const label=document.getElementById('geo-label');
+  const btn=document.getElementById('btn-geo');
+  dot.className='geo-dot loading';
+  label.textContent='Obtendo localização do posto...';
+  document.getElementById('geo-coords').textContent='';
+  btn.disabled=true;
+  if(!navigator.geolocation){
+    dot.className='geo-dot err';
+    label.textContent='GPS não suportado neste navegador.';
+    btn.disabled=false; return;
+  }
+  navigator.geolocation.getCurrentPosition(pos=>{
+    lat=pos.coords.latitude.toFixed(6);
+    lng=pos.coords.longitude.toFixed(6);
+    prec=Math.round(pos.coords.accuracy);
+    dot.className='geo-dot ok';
+    label.textContent='Localização do posto capturada!';
+    document.getElementById('geo-coords').textContent=lat+', '+lng+' (±'+prec+'m)';
+    btn.disabled=false;
+    verificar();
+  },err=>{
+    dot.className='geo-dot err';
+    if(err.code===1) label.textContent='Permissão negada. Ative o GPS.';
+    else if(err.code===3) label.textContent='Tempo esgotado. Tente novamente.';
+    else label.textContent='Não foi possível obter a localização.';
+    btn.disabled=false;
+  },{enableHighAccuracy:true,timeout:15000});
+}
+
+function verificar(){
+  const nome=document.getElementById('nome').value.trim();
+  const posto=document.getElementById('posto').value.trim();
+  document.getElementById('btn-submit').disabled=!(nome&&posto&&lat&&lng);
+}
+
+async function registrar(){
+  const nome=document.getElementById('nome').value.trim();
+  const posto=document.getElementById('posto').value.trim();
+  const agora=new Date();
+  const data=agora.toLocaleDateString('pt-BR');
+  const hora=agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+  setLoading(true);
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/registros_ponto`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({nome, posto, data, hora, latitude: parseFloat(lat), longitude: parseFloat(lng), precisao: prec})
+    });
+
+    if(!res.ok) throw new Error('Erro ao salvar');
+
+    mostrarAlerta('success','✅ Localização do posto salva com sucesso! — '+posto);
+    document.getElementById('nome').value='';
+    document.getElementById('posto').value='';
+    lat=null; lng=null; prec=null;
+    document.getElementById('geo-label').textContent='Localização do posto não capturada';
+    document.getElementById('geo-coords').textContent='';
+    document.getElementById('geo-dot').className='geo-dot';
+    document.getElementById('btn-submit').disabled=true;
+
+  } catch(e){
+    mostrarAlerta('error','❌ Erro ao salvar. Verifique sua conexão e tente novamente.');
+  }
+
+  setLoading(false);
+}
+
+function setLoading(on){
+  document.getElementById('spinner').style.display=on?'block':'none';
+  document.getElementById('btn-icon').style.display=on?'none':'block';
+  document.getElementById('btn-text').textContent=on?'Salvando...':'Salvar localização do posto';
+  document.getElementById('btn-submit').disabled=on;
+}
+
+function mostrarAlerta(tipo,msg){
+  const el=document.getElementById('alert');
+  el.className='alert '+tipo;
+  el.textContent=msg;
+  el.style.display='flex';
+  setTimeout(()=>{el.style.display='none';},5000);
+}
+</script>
+</body>
+</html>
